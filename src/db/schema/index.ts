@@ -1,10 +1,14 @@
 import { relations } from "drizzle-orm";
+import { sqliteTable, text, uniqueIndex, integer, real } from "drizzle-orm/sqlite-core";
 import {
-  sqliteTable,
-  text,
-  uniqueIndex,
-  integer,
-} from "drizzle-orm/sqlite-core";
+  ORDER_STATUS_PAYED,
+  ORDER_STATUS_PENDING,
+  SUBSCRIPTION_ACTIVATION_STATUS_ACTIVE,
+  SUBSCRIPTION_ACTIVATION_STATUS_PENDING,
+  SUBSCRIPTION_STATUS_ACTIVE,
+  SUBSCRIPTION_STATUS_INACTIVE,
+} from "../../config/constants";
+
 const boolean = (col: string) => integer(col, { mode: "boolean" });
 const timestamp = (col: string) => integer(col, { mode: "timestamp" });
 
@@ -26,7 +30,7 @@ export const users = sqliteTable(
     return {
       emailIdx: uniqueIndex("emailIdx").on(table.email),
     };
-  }
+  },
 );
 
 export const userRelations = relations(users, ({ many }) => ({
@@ -46,15 +50,12 @@ export const emailVerifications = sqliteTable("emailVerifications", {
   attempts: integer("attempts").default(0).notNull(),
 });
 
-export const emailVerificationRelations = relations(
-  emailVerifications,
-  ({ one }) => ({
-    user: one(users, {
-      fields: [emailVerifications.userId],
-      references: [users.id],
-    }),
-  })
-);
+export const emailVerificationRelations = relations(emailVerifications, ({ one }) => ({
+  user: one(users, {
+    fields: [emailVerifications.userId],
+    references: [users.id],
+  }),
+}));
 export const emailChangeRequests = sqliteTable("emailChangeRequests", {
   id: integer("id").primaryKey().notNull(),
   createdAt: timestamp("createdAt").notNull(),
@@ -94,18 +95,55 @@ export const teamsRelations = relations(teams, ({ one }) => ({
   }),
 }));
 
-// export const plans = sqliteTable("plans", {
-// todo: add plans table schema
-// });
+export const plans = sqliteTable("plans", {
+  id: integer("id").primaryKey().notNull(),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  price: real("price").notNull(),
+  createdAt: timestamp("createdAt").notNull(),
+  updatedAt: timestamp("updatedAt").notNull(),
+});
 
-// export const subscriptions = sqliteTable("subscriptions", {
-//   // todo: add subscriptions table schema
-// });
+export const subscriptions = sqliteTable("subscriptions", {
+  id: integer("id").primaryKey().notNull(),
+  startDate: timestamp("startDate").notNull(),
+  endDate: timestamp("endDate").notNull(),
+  status: text("status", { enum: [SUBSCRIPTION_STATUS_ACTIVE, SUBSCRIPTION_STATUS_INACTIVE] }).notNull(),
+  createdAt: timestamp("createdAt").notNull(),
+  updatedAt: timestamp("updatedAt").notNull(),
+  planId: integer("planId")
+    .notNull()
+    .references(() => plans.id, { onDelete: "restrict" }),
+  userId: integer("userId")
+    .notNull()
+    .references(() => users.id, { onDelete: "restrict", onUpdate: "restrict" }),
+  teamId: integer("teamId")
+    .notNull()
+    .references(() => teams.id, { onDelete: "restrict", onUpdate: "restrict" }),
+});
 
-// export const orders = sqliteTable("orders", {
-//   // todo: add orders table schema
-// });
+export const orders = sqliteTable("orders", {
+  id: integer("id").primaryKey().notNull(),
+  status: text("status", { enum: [ORDER_STATUS_PENDING, ORDER_STATUS_PAYED] }).notNull(),
+  createdAt: timestamp("createdAt").notNull(),
+  updatedAt: timestamp("updatedAt").notNull(),
+  userId: integer("userId")
+    .notNull()
+    .references(() => users.id, { onDelete: "restrict", onUpdate: "restrict" }),
+  subscriptionId: integer("subscriptionId")
+    .notNull()
+    .references(() => subscriptions.id, { onDelete: "restrict", onUpdate: "restrict" }),
+});
 
-// export const subscriptionActivations = sqliteTable("subscriptionActivations", {
-//   // todo: add subscriptionActivations table schema
-// });
+export const subscriptionActivations = sqliteTable("subscriptionActivations", {
+  id: integer("id").primaryKey().notNull(),
+  activationDate: timestamp("activationDate").notNull(),
+  status: text("status", {
+    enum: [SUBSCRIPTION_ACTIVATION_STATUS_PENDING, SUBSCRIPTION_ACTIVATION_STATUS_ACTIVE],
+  }).notNull(),
+  createdAt: timestamp("createdAt").notNull(),
+  updatedAt: timestamp("updatedAt").notNull(),
+  subscriptionId: integer("subscriptionId")
+    .notNull()
+    .references(() => subscriptions.id, { onDelete: "restrict", onUpdate: "restrict" }),
+});

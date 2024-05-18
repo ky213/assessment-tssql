@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 //Plans
-export const insertPlanSchema = z.object({
+export const planInsertSchema = z.object({
   name: z
     .string({
       description: "Plan name",
@@ -27,6 +27,11 @@ export const insertPlanSchema = z.object({
     .nonnegative({ message: "Price cannot be negative." }),
 });
 
-export const updatePlanSchema = insertPlanSchema.partial().extend({
+export const planUpdateSchema = planInsertSchema.partial().extend({
   id: z.coerce.number().int({ message: "Invalid plan id." }),
+});
+
+export const planUpgradeCostSchema = z.object({
+  currentPlanId: z.coerce.number().int({ message: "Invalid plan id." }),
+  desiredPlanId: z.coerce.number().int({ message: "Invalid plan id." }),
 });

@@ -1,13 +1,6 @@
 import { relations } from "drizzle-orm";
 import { sqliteTable, text, uniqueIndex, integer, real } from "drizzle-orm/sqlite-core";
-import {
-  ORDER_STATUS_PAYED,
-  ORDER_STATUS_PENDING,
-  SUBSCRIPTION_ACTIVATION_STATUS_ACTIVE,
-  SUBSCRIPTION_ACTIVATION_STATUS_PENDING,
-  SUBSCRIPTION_STATUS_ACTIVE,
-  SUBSCRIPTION_STATUS_INACTIVE,
-} from "../../config/constants";
+import { ENUMS } from "../../config/constants";
 
 const boolean = (col: string) => integer(col, { mode: "boolean" });
 const timestamp = (col: string) => integer(col, { mode: "timestamp" });
@@ -56,6 +49,7 @@ export const emailVerificationRelations = relations(emailVerifications, ({ one }
     references: [users.id],
   }),
 }));
+
 export const emailChangeRequests = sqliteTable("emailChangeRequests", {
   id: integer("id").primaryKey().notNull(),
   createdAt: timestamp("createdAt").notNull(),
@@ -86,12 +80,17 @@ export const teams = sqliteTable("teams", {
   userId: integer("userId")
     .notNull()
     .references(() => users.id, { onDelete: "restrict", onUpdate: "restrict" }),
+  subscriptionId: integer("subscriptionId").references(() => subscriptions.id),
 });
 
 export const teamsRelations = relations(teams, ({ one }) => ({
   user: one(users, {
     fields: [teams.userId],
     references: [users.id],
+  }),
+  subscription: one(subscriptions, {
+    fields: [teams.subscriptionId],
+    references: [subscriptions.id],
   }),
 }));
 
@@ -104,11 +103,11 @@ export const plans = sqliteTable("plans", {
   updatedAt: timestamp("updatedAt").notNull(),
 });
 
-export const subscriptions = sqliteTable("subscriptions", {
+export const subscriptions: ReturnType<typeof sqliteTable> = sqliteTable("subscriptions", {
   id: integer("id").primaryKey().notNull(),
   startDate: timestamp("startDate").notNull(),
   endDate: timestamp("endDate").notNull(),
-  status: text("status", { enum: [SUBSCRIPTION_STATUS_ACTIVE, SUBSCRIPTION_STATUS_INACTIVE] }).notNull(),
+  status: text("status", { enum: [ENUMS.SUBSCRIPTION_STATUS_ACTIVE, ENUMS.SUBSCRIPTION_STATUS_INACTIVE] }).notNull(),
   createdAt: timestamp("createdAt").notNull(),
   updatedAt: timestamp("updatedAt").notNull(),
   planId: integer("planId")
@@ -122,9 +121,24 @@ export const subscriptions = sqliteTable("subscriptions", {
     .references(() => teams.id, { onDelete: "restrict", onUpdate: "restrict" }),
 });
 
+export const subscriptionsRelations = relations(subscriptions, ({ one }) => ({
+  plan: one(plans, {
+    fields: [subscriptions.planId],
+    references: [plans.id],
+  }),
+  user: one(users, {
+    fields: [subscriptions.userId],
+    references: [users.id],
+  }),
+  team: one(teams, {
+    fields: [subscriptions.teamId],
+    references: [teams.id],
+  }),
+}));
+
 export const orders = sqliteTable("orders", {
   id: integer("id").primaryKey().notNull(),
-  status: text("status", { enum: [ORDER_STATUS_PENDING, ORDER_STATUS_PAYED] }).notNull(),
+  status: text("status", { enum: [ENUMS.ORDER_STATUS_PENDING, ENUMS.ORDER_STATUS_PAYED] }).notNull(),
   createdAt: timestamp("createdAt").notNull(),
   updatedAt: timestamp("updatedAt").notNull(),
   userId: integer("userId")
@@ -135,11 +149,22 @@ export const orders = sqliteTable("orders", {
     .references(() => subscriptions.id, { onDelete: "restrict", onUpdate: "restrict" }),
 });
 
+export const ordersRelations = relations(orders, ({ one }) => ({
+  user: one(users, {
+    fields: [orders.userId],
+    references: [users.id],
+  }),
+  subscription: one(subscriptions, {
+    fields: [orders.subscriptionId],
+    references: [subscriptions.id],
+  }),
+}));
+
 export const subscriptionActivations = sqliteTable("subscriptionActivations", {
   id: integer("id").primaryKey().notNull(),
   activationDate: timestamp("activationDate").notNull(),
   status: text("status", {
-    enum: [SUBSCRIPTION_ACTIVATION_STATUS_PENDING, SUBSCRIPTION_ACTIVATION_STATUS_ACTIVE],
+    enum: [ENUMS.SUBSCRIPTION_ACTIVATION_STATUS_PENDING, ENUMS.SUBSCRIPTION_ACTIVATION_STATUS_ACTIVE],
   }).notNull(),
   createdAt: timestamp("createdAt").notNull(),
   updatedAt: timestamp("updatedAt").notNull(),
@@ -147,3 +172,10 @@ export const subscriptionActivations = sqliteTable("subscriptionActivations", {
     .notNull()
     .references(() => subscriptions.id, { onDelete: "restrict", onUpdate: "restrict" }),
 });
+
+export const subscriptionActivationsRelations = relations(subscriptionActivations, ({ one }) => ({
+  subscription: one(subscriptions, {
+    fields: [subscriptionActivations.subscriptionId],
+    references: [subscriptions.id],
+  }),
+}));

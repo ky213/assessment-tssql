@@ -1,6 +1,7 @@
 import { relations } from "drizzle-orm";
 import { sqliteTable, text, uniqueIndex, integer, real } from "drizzle-orm/sqlite-core";
-import { ENUMS } from "../../config/constants";
+
+import { ENUMS } from "#src/config/constants";
 
 const boolean = (col: string) => integer(col, { mode: "boolean" });
 const timestamp = (col: string) => integer(col, { mode: "timestamp" });

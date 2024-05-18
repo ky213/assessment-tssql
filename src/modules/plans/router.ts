@@ -10,7 +10,7 @@ export const plans = router({
       return await db.query.plans.findMany();
     } catch (error) {
       console.error("Error fetching plans", error);
-      return [];
+      return new trpcError({ code: "INTERNAL_SERVER_ERROR" });
     }
   }),
 
@@ -30,11 +30,10 @@ export const plans = router({
       return {
         success: true,
       };
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      return {
-        success: false,
-      };
+
+      return new trpcError(error);
     }
   }),
   planUpdate: protectedProcedure.input(updatePlanSchema).mutation(async ({ input }) => {
@@ -50,10 +49,8 @@ export const plans = router({
       return {
         success: true,
       };
-    } catch (error) {
-      return {
-        success: false,
-      };
+    } catch (error: any) {
+      return new trpcError(error);
     }
   }),
 

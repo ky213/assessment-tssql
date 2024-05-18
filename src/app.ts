@@ -2,13 +2,16 @@ import fastify from "fastify";
 import cors from "@fastify/cors";
 import type { FastifyCookieOptions } from "@fastify/cookie";
 import cookie from "@fastify/cookie";
-import {
-  fastifyTRPCPlugin,
-  type FastifyTRPCPluginOptions,
-} from "@trpc/server/adapters/fastify";
+import { fastifyTRPCPlugin, type FastifyTRPCPluginOptions } from "@trpc/server/adapters/fastify";
 import { createContext } from "./trpc/context";
 import { appRouter } from "./trpc/router";
 import { ENV_CONFIG } from "./env.config";
+import { healthRouter } from "./hooks/health";
+import { trpcPanel } from "./trpc/trpc-panel";
+
+const host = ENV_CONFIG.HOST;
+const port = ENV_CONFIG.PORT;
+
 // import { startSqsConsumers } from "./sqs";
 
 const server = fastify({
@@ -52,11 +55,10 @@ server.register(fastifyTRPCPlugin, {
   } satisfies FastifyTRPCPluginOptions<AppRouter>["trpcOptions"],
 });
 
-import { healthRouter } from "./hooks/health";
 server.register(healthRouter, { prefix: "/health" });
 
-const host = ENV_CONFIG.HOST;
-const port = ENV_CONFIG.PORT;
+server.register(trpcPanel);
+
 (async () => {
   try {
     // await startSqsConsumers();

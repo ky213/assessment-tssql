@@ -1,15 +1,11 @@
 import bcryptjs from "bcryptjs";
 import * as crypto from "crypto";
-import { router, trpcError, publicProcedure } from "../../trpc/core";
-import { z } from "zod";
-import { db, schema } from "../../db/client";
 import { and, desc, eq, gte, sql } from "drizzle-orm";
-import {
-  verifyRefreshToken,
-  setTokens,
-  clearTokens,
-  generateOtp,
-} from "./model";
+import { z } from "zod";
+
+import { router, trpcError, publicProcedure } from "#src/trpc/core";
+import { db, schema } from "#src/db/client";
+import { verifyRefreshToken, setTokens, clearTokens, generateOtp } from "./model";
 import { initPersonalTeam } from "../teams/model";
 
 const salt = 10;
@@ -28,7 +24,7 @@ export const auth = router({
       }
       setTokens({
         res,
-        payload: { userId: user.id },
+        payload: { userId: user.id, isAdmin: user.isAdmin },
       });
       return {
         success: true,
@@ -46,10 +42,7 @@ export const auth = router({
       const { email, password } = input;
       const emailNormalized = email.toLowerCase();
       const user = await db.query.users.findFirst({
-        where: and(
-          eq(schema.users.email, emailNormalized),
-          eq(schema.users.emailVerified, true)
-        ),
+        where: and(eq(schema.users.email, emailNormalized), eq(schema.users.emailVerified, true)),
       });
       // check 404 and check if user has password set
       if (!user || !user.hashedPassword) {
@@ -66,7 +59,7 @@ export const auth = router({
       }
       setTokens({
         res,
-        payload: { userId: user.id },
+        payload: { userId: user.id, isAdmin: user.isAdmin },
       });
       return {
         success: true,
@@ -80,7 +73,7 @@ export const auth = router({
         password: z.string(),
         timezone: z.string(),
         locale: z.string(),
-      })
+      }),
     )
     .mutation(async ({ input }) => {
       const { name, email, password, timezone, locale } = input;
@@ -151,7 +144,7 @@ export const auth = router({
       const verifyRequest = await db.query.emailVerifications.findFirst({
         where: and(
           eq(schema.emailVerifications.email, emailNormalized),
-          gte(schema.emailVerifications.createdAt, timeBefore10Minutes)
+          gte(schema.emailVerifications.createdAt, timeBefore10Minutes),
         ),
         orderBy: desc(schema.emailVerifications.createdAt),
         with: {
@@ -166,9 +159,7 @@ export const auth = router({
       }
       if (verifyRequest.otpCode !== otpCode) {
         // if invalid, increment attempts
-        db.run(
-          sql`UPDATE ${schema.emailVerifications} SET attempts = attempts + 1 WHERE id = ${verifyRequest.id}`
-        );
+        db.run(sql`UPDATE ${schema.emailVerifications} SET attempts = attempts + 1 WHERE id = ${verifyRequest.id}`);
         throw new trpcError({
           code: "BAD_REQUEST",
         });
@@ -187,7 +178,8 @@ export const auth = router({
       // perform login for user
       setTokens({
         res,
-        payload: { userId: verifyRequest.userId },
+        //@ts-ignore TODO: set correct type
+        payload: { userId: verifyRequest.userId, isAdmin: verifyRequest.user?.isAdmin },
       });
       return {
         success: true,
@@ -198,17 +190,14 @@ export const auth = router({
     .input(
       z.object({
         email: z.string().email(),
-      })
+      }),
     )
     .mutation(async ({ input }) => {
       const { email } = input;
       const emailNormalized = email.toLowerCase();
       // get user
       const user = await db.query.users.findFirst({
-        where: and(
-          eq(schema.users.email, emailNormalized),
-          eq(schema.users.emailVerified, false)
-        ),
+        where: and(eq(schema.users.email, emailNormalized), eq(schema.users.emailVerified, false)),
       });
       // check 404
       if (!user) {
@@ -247,76 +236,68 @@ export const auth = router({
         success: true,
       };
     }),
-  passwordResetRequest: publicProcedure
-    .input(z.object({ email: z.string().email() }))
-    .mutation(async ({ input }) => {
-      const { email } = input;
-      const emailNormalized = email.toLowerCase();
-      // get user
-      const user = await db.query.users.findFirst({
-        where: and(
-          eq(schema.users.email, emailNormalized),
-          eq(schema.users.emailVerified, true)
-        ),
+  passwordResetRequest: publicProcedure.input(z.object({ email: z.string().email() })).mutation(async ({ input }) => {
+    const { email } = input;
+    const emailNormalized = email.toLowerCase();
+    // get user
+    const user = await db.query.users.findFirst({
+      where: and(eq(schema.users.email, emailNormalized), eq(schema.users.emailVerified, true)),
+    });
+    // check 404
+    if (!user) {
+      throw new trpcError({
+        code: "NOT_FOUND",
       });
-      // check 404
-      if (!user) {
-        throw new trpcError({
-          code: "NOT_FOUND",
-        });
-      }
-      // create random token
-      const token = crypto.randomBytes(64).toString("hex");
+    }
+    // create random token
+    const token = crypto.randomBytes(64).toString("hex");
 
-      // create reset request
-      // const [resetRequest] =
-      await db
-        .insert(schema.passwordResetRequests)
-        .values({
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          userId: user.id,
-          token,
-        })
-        .returning();
-      // notify user
-      // notify(emailNormalized, "passwordResetRequest", "en", {
-      //   userName: user.name,
-      //   token: resetRequest.token,
-      // });
-      // await notify({
-      //   eventType: "passwordResetRequest",
-      //   channels: ["mail"],
-      //   data: {
-      //     token: resetRequest!.token,
-      //     userName: user.name,
-      //   },
-      //   user: {
-      //     email: user.email,
-      //     locale: user.locale as Language,
-      //   },
-      // });
-      return {
-        success: true,
-      };
-    }),
+    // create reset request
+    // const [resetRequest] =
+    await db
+      .insert(schema.passwordResetRequests)
+      .values({
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        userId: user.id,
+        token,
+      })
+      .returning();
+    // notify user
+    // notify(emailNormalized, "passwordResetRequest", "en", {
+    //   userName: user.name,
+    //   token: resetRequest.token,
+    // });
+    // await notify({
+    //   eventType: "passwordResetRequest",
+    //   channels: ["mail"],
+    //   data: {
+    //     token: resetRequest!.token,
+    //     userName: user.name,
+    //   },
+    //   user: {
+    //     email: user.email,
+    //     locale: user.locale as Language,
+    //   },
+    // });
+    return {
+      success: true,
+    };
+  }),
   passwordResetSubmit: publicProcedure
     .input(
       z.object({
         email: z.string().email(),
         token: z.string(),
         newPassword: z.string(),
-      })
+      }),
     )
     .mutation(async ({ input }) => {
       const { email, token, newPassword } = input;
       // get user
       const normalizedEmail = email.toLowerCase();
       const user = await db.query.users.findFirst({
-        where: and(
-          eq(schema.users.email, normalizedEmail),
-          eq(schema.users.emailVerified, true)
-        ),
+        where: and(eq(schema.users.email, normalizedEmail), eq(schema.users.emailVerified, true)),
       });
       // check 404
       if (!user) {
@@ -327,10 +308,7 @@ export const auth = router({
       // get request
       const resetRequest = await db.query.passwordResetRequests.findFirst({
         // where: { userId: user.id, token },
-        where: and(
-          eq(schema.passwordResetRequests.userId, user.id),
-          eq(schema.passwordResetRequests.token, token)
-        ),
+        where: and(eq(schema.passwordResetRequests.userId, user.id), eq(schema.passwordResetRequests.token, token)),
       });
       // check 404
       if (!resetRequest) {

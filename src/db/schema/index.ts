@@ -10,7 +10,7 @@ export const users = sqliteTable(
   "users",
   {
     id: integer("id").primaryKey().notNull(),
-    email: text("email").notNull(),
+    email: text("email").unique().notNull(),
     name: text("name").notNull(),
     hashedPassword: text("hashedPassword"),
     emailVerified: boolean("emailVerified").default(false).notNull(),
@@ -74,7 +74,7 @@ export const passwordResetRequests = sqliteTable("passwordResetRequests", {
 
 export const teams = sqliteTable("teams", {
   id: integer("id").primaryKey().notNull(),
-  name: text("name").notNull(),
+  name: text("name").unique().notNull(),
   isPersonal: boolean("isPersonal").notNull(),
   createdAt: timestamp("createdAt").notNull(),
   updatedAt: timestamp("updatedAt").notNull(),
@@ -97,7 +97,7 @@ export const teamsRelations = relations(teams, ({ one }) => ({
 
 export const plans = sqliteTable("plans", {
   id: integer("id").primaryKey().notNull(),
-  name: text("name").notNull(),
+  name: text("name").unique().notNull(),
   description: text("description").notNull(),
   price: real("price").notNull(),
   createdAt: timestamp("createdAt").notNull(),

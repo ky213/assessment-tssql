@@ -7,6 +7,7 @@ const jwtSecret = ENV_CONFIG.JWT_SECRET;
 
 type MyJwtPayload = {
   userId: number;
+  isAdmin: boolean;
 };
 
 export const verifyRefreshToken = ({ req }: { req: FastifyRequest }) => {
@@ -24,13 +25,7 @@ export const verifyAccessToken = ({ req }: { req: FastifyRequest }) => {
   return jwt.verify(accessToken, jwtSecret) as MyJwtPayload;
 };
 
-export const setTokens = ({
-  res,
-  payload,
-}: {
-  res: FastifyReply;
-  payload: MyJwtPayload;
-}) => {
+export const setTokens = ({ res, payload }: { res: FastifyReply; payload: MyJwtPayload }) => {
   const accessToken = jwt.sign(payload, jwtSecret, {
     expiresIn: "1h",
   });
@@ -63,5 +58,4 @@ export const clearTokens = ({ res }: { res: FastifyReply }) => {
   });
 };
 
-export const generateOtp = () =>
-  Math.floor(100000 + Math.random() * 900000).toString();
+export const generateOtp = () => Math.floor(100000 + Math.random() * 900000).toString();

@@ -45,6 +45,7 @@ export const plans = router({
         .set({
           name: input.name,
           price: input.price,
+          description: input.description,
           updatedAt: new Date(),
         })
         .where(eq(schema.plans.id, input.id));

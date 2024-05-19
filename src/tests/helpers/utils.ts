@@ -12,22 +12,22 @@ interface FastifyRequestWithCookie extends FastifyRequest {
 const jwtSecret = ENV_CONFIG.JWT_SECRET;
 export const createCaller = (
   (appRouter) =>
-  ({
-    req,
-    res,
-  }: {
-    req?: Partial<FastifyRequestWithCookie>;
-    res?: FastifyReply | object;
-  }) => {
+  ({ req, res }: { req?: Partial<FastifyRequestWithCookie>; res?: FastifyReply | object }) => {
     const caller = createCallerFactory(appRouter);
     return caller({ req: req as FastifyRequest, res: res as FastifyReply });
   }
 )(appRouter);
 
-export const createAuthenticatedCaller = ({ userId }: { userId: number }) => {
-  const accessToken = jwt.sign({ userId }, jwtSecret);
+export interface IAuthCallerOptions {
+  userId: number;
+  isAdmin?: boolean;
+  path?: string;
+}
+
+export const createAuthenticatedCaller = ({ userId, isAdmin = false, path = "" }: IAuthCallerOptions) => {
+  const accessToken = jwt.sign({ userId, isAdmin }, jwtSecret);
   return createCaller({
-    req: { cookies: { accessToken } },
+    req: { cookies: { accessToken }, params: { path } },
     res: { setCookie: () => {} },
   });
 };

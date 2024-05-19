@@ -17,6 +17,8 @@ const isUser = middleware(({ ctx: { req, res }, next }) => {
     return next({
       ctx: {
         user: { userId, isAdmin },
+        //@ts-ignore TODO:set correct path type
+        target: req.params?.path || "",
       },
     });
   } catch (error) {

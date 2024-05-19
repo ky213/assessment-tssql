@@ -15,11 +15,14 @@ export default async () => {
     return sql.raw(`DELETE FROM "${table}";`);
   });
 
+  //To bypass foreign_key constraint error
+  db.run(sql.raw(`PRAGMA foreign_keys = OFF;`));
+
   await db.transaction(async (trx) => {
     await Promise.all(
       queries.map(async (query) => {
         if (query) await trx.run(query);
-      })
+      }),
     );
   });
   console.log("✅ Database emptied");

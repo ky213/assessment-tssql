@@ -1,6 +1,6 @@
 import { db, schema } from "#src/db/client";
 import { sql, inArray } from "drizzle-orm";
-import { admin, user } from "../helpers/fakes";
+import { admin, user, planBasic } from "../helpers/fakes";
 
 export const prepareUsers = async () => {
   const now = new Date();
@@ -11,11 +11,12 @@ export const prepareUsers = async () => {
   console.log("✅ Users prepared.");
 };
 
-export const cleanUsers = async () => {
+export const cleanUp = async () => {
   //To bypass foreign_key constraint error
   db.run(sql.raw(`PRAGMA foreign_keys = OFF;`));
 
   await db.delete(schema.users).where(inArray(schema.users.email, [admin.email, user.email]));
+  await db.delete(schema.plans).where(inArray(schema.plans.name, [planBasic.name]));
 
-  console.log("✅ Users cleaned.");
+  console.log("✅ Plan tests cleaned.");
 };
